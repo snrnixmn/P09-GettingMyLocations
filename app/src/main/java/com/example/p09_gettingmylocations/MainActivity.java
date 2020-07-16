@@ -58,8 +58,8 @@ public class MainActivity extends AppCompatActivity {
                 public void onSuccess(Location location) {
                     // Check last known location. Can be null.
                     if (location != null) {
-                        tvLat.setText("Lat : " + location.getLatitude());
-                        tvLong.setText("Lng : " + location.getLongitude());
+                        tvLat.setText("Latitude : " + location.getLatitude());
+                        tvLong.setText("Longitude : " + location.getLongitude());
 
                     } else {
 
@@ -84,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
             public void onLocationResult(LocationResult locationResult) {
                 if (locationResult != null) {
                     Location data = locationResult.getLastLocation();
-                    String msg = "New Loc Detected\n"+"Lat: "+ data.getLatitude()+","+"Lng: "+data.getLongitude();
+                    String msg = "Lat: "+ data.getLatitude()+","+"Lng: "+ data.getLongitude();
                     Toast.makeText(MainActivity.this,msg,Toast.LENGTH_SHORT).show();
                 }
             }
