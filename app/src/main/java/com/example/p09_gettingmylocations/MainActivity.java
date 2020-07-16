@@ -8,6 +8,8 @@ import android.Manifest;
 import android.content.Intent;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Environment;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -31,9 +33,9 @@ public class MainActivity extends AppCompatActivity {
     Button btnStartDetector, btnStopDetector, btnCheckRecords;
     TextView tvLat, tvLong;
     FusedLocationProviderClient client;
-    LocationRequest mLocationRequest;
     LocationCallback mLocationCallback;
     String folderLocation;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,99 +50,91 @@ public class MainActivity extends AppCompatActivity {
 
         client = LocationServices.getFusedLocationProviderClient(this);
 
-        mLocationRequest = LocationRequest.create();
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        mLocationRequest.setInterval(10000);
-        mLocationRequest.setFastestInterval(5000);
-        mLocationRequest.setSmallestDisplacement(100);
+        if (checkPermission() == true) {
+            Task<Location> task = client.getLastLocation();
+            task.addOnSuccessListener(MainActivity.this, new OnSuccessListener<Location>() {
 
+                @Override
+                public void onSuccess(Location location) {
+                    // Check last known location. Can be null.
+                    if (location != null) {
+                        tvLat.setText("Lat : " + location.getLatitude());
+                        tvLong.setText("Lng : " + location.getLongitude());
+
+                    } else {
+
+                    }
+                }
+            });
+        }
+
+        int permissionCheck_Storage = ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        folderLocation = Environment.getExternalStorageDirectory().getAbsolutePath() + "/P09";
+
+        File folder = new File(folderLocation);
+        if (folder.exists() == false){
+            boolean result = folder.mkdir();
+            if (result == true) {
+                Log.d("File Read/Write", "Folder created");
+            }
+        }
 
         mLocationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 if (locationResult != null) {
                     Location data = locationResult.getLastLocation();
-                    double lat = data.getLatitude();
-                    double lng = data.getLongitude();
+                    String msg = "New Loc Detected\n"+"Lat: "+ data.getLatitude()+","+"Lng: "+data.getLongitude();
+                    Toast.makeText(MainActivity.this,msg,Toast.LENGTH_SHORT).show();
                 }
             }
         };
 
 
-
         btnStartDetector.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
-                Intent i = new Intent(MainActivity.this, MyService.class);
-                startService(i);
-                if (checkPermission() == true) {
-                    Task<Location> task = client.getLastLocation();
-                    task.addOnSuccessListener(MainActivity.this, new OnSuccessListener<Location>() {
-                        @Override
-                        public void onSuccess(Location location) {
-                            // Check last known location. Can be null.
-                            if (location != null) {
-                                tvLat.setText("Lat : " + location.getLatitude());
-                                tvLong.setText("Lng : " + location.getLongitude());
-
-                            } else {
-
-                            }
-                        }
-                    });
-
-                    client.requestLocationUpdates(mLocationRequest, mLocationCallback, null);
-                    File targetFile = new File(folderLocation, "data.txt");
-
-                    try {
-                        FileWriter writer = new FileWriter(targetFile, true);
-                        writer.write(tvLat.getText().toString() + " " + tvLong.getText().toString());
-                        writer.flush();
-                        writer.close();
-
-                    } catch (Exception e) {
-                        Toast.makeText(MainActivity.this, "Failed to Write!",
-                                Toast.LENGTH_SHORT).show();
-                        e.printStackTrace();
-                    }
+            public void onClick(View view) {
+                    Intent i = new Intent(MainActivity.this, MyService.class);
+                    startService(i);
                 }
-            }
+
         });
 
         btnStopDetector.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
-                Intent i = new Intent(MainActivity.this, MyService.class);
+            public void onClick(View view) {
+                Intent i =new Intent(MainActivity.this,MyService.class);
                 stopService(i);
             }
         });
 
         btnCheckRecords.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
+            public void onClick(View view) {
+                File targetFile = new File(folderLocation,"data.txt");
 
-                //Code for file reading
-                File targetFile = new File(folderLocation, "data.txt");
-
-                if (targetFile.exists()) {
+                if (targetFile.exists()){
                     String data = "";
                     try {
                         FileReader reader = new FileReader(targetFile);
                         BufferedReader br = new BufferedReader(reader);
                         String line = br.readLine();
-                        while (line != null) {
-                            data += line + "\n";
+                        while (line != null){
+                            data += line+"\n";
                             line = br.readLine();
                         }
-                    } catch (Exception e) {
-                        Toast.makeText(MainActivity.this, "Failed to Read!",
-                                Toast.LENGTH_SHORT).show();
+                        br.close();
+                        reader.close();
+                    }catch (Exception e ){
+                        Toast.makeText(MainActivity.this,"Failed to read!",Toast.LENGTH_LONG).show();
                         e.printStackTrace();
                     }
+                    Toast.makeText(MainActivity.this,data,Toast.LENGTH_SHORT).show();
+                }else{
+                    Toast.makeText(MainActivity.this,"Record file doesn't exist",Toast.LENGTH_SHORT).show();
                 }
             }
         });
-
     }
 
     private boolean checkPermission() {
@@ -148,12 +142,18 @@ public class MainActivity extends AppCompatActivity {
                 MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION);
         int permissionCheck_Fine = ContextCompat.checkSelfPermission(
                 MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION);
+        int permissionCheck_Storage = ContextCompat.checkSelfPermission(
+                MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+
 
         if (permissionCheck_Coarse == PermissionChecker.PERMISSION_GRANTED
-                || permissionCheck_Fine == PermissionChecker.PERMISSION_GRANTED) {
+                && permissionCheck_Fine == PermissionChecker.PERMISSION_GRANTED
+                && permissionCheck_Storage == PermissionChecker.PERMISSION_GRANTED
+        ) {
             return true;
         } else {
             return false;
         }
     }
+
 }
